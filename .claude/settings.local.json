@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install *)",
+      "Bash(python -c \"import requests, bs4, anthropic, tkinter; print\\('All imports OK'\\)\")"
+    ]
+  }
+}
