@@ -1913,7 +1913,7 @@ class WhiteClawApp:
                 )
                 self._gen_btn.pack(side="left")
                 tk.Label(btn_bar,
-                         text="  Requires a valid Claude API key and a completed scan.",
+                         text="  Requires a valid AI API key and a completed scan to form report.",
                          font=("Consolas", 15), fg=FG2, bg=BG).pack(side="left")
 
             ta = scrolledtext.ScrolledText(frame, bg=BG, fg=FG, font=("Consolas", 16),
