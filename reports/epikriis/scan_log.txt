@@ -1,0 +1,23 @@
+
+============================================================
+SCAN SESSION — 2026-04-27 22:58:00
+Target : https://www.epikriis.ee
+Mode   : Log only
+Total  : 17 finding(s)  HIGH:3  INFO:2  LOW:1  MEDIUM:11
+  [INFO    ] Target reachable
+  [MEDIUM  ] Server header discloses version
+  [HIGH    ] Missing header: Strict-Transport-Security
+  [HIGH    ] Missing header: X-Frame-Options
+  [MEDIUM  ] Missing header: X-Content-Type-Options
+  [HIGH    ] Missing header: Content-Security-Policy
+  [MEDIUM  ] Missing header: Referrer-Policy
+  [LOW     ] Missing header: Permissions-Policy
+  [MEDIUM  ] Missing header: Cross-Origin-Opener-Policy
+  [INFO    ] HTTP OPTIONS reveals allowed methods
+  [MEDIUM  ] HTML comment found
+  [MEDIUM  ] HTML comment found
+  [MEDIUM  ] HTML comment found
+  [MEDIUM  ] HTML comment found
+  [MEDIUM  ] HTML comment found
+  [MEDIUM  ] HTML comment found
+  [MEDIUM  ] HTML comment found
