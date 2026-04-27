@@ -71,7 +71,7 @@ class WhiteClawCybrApp:
         tk.Label(top, text="  Security Toolkit Hub",
                  font=("Consolas", 18), fg=FG2, bg=BG2).pack(side="left", pady=2)
 
-        ver = tk.Label(top, text="v2.0 | Authorized use only",
+        ver = tk.Label(top, text="v2.1 | Authorized use only",
                        font=("Consolas", 13), fg=BG4, bg=BG2)
         ver.pack(side="right")
 
@@ -131,7 +131,7 @@ class WhiteClawCybrApp:
         tk.Frame(card, bg=BG3, height=1).pack(fill="x", pady=10)
 
         self._web_btn = tk.Button(
-            card, text="  Launch WhiteClaw WEB  ",
+            card, text="  Launch WhiteClaw WEBpatch  ",
             font=("Consolas", 16, "bold"),
             bg=DARK_GRN(), fg="white",
             activebackground="#196127",
@@ -170,7 +170,7 @@ class WhiteClawCybrApp:
         tk.Frame(card, bg=BG3, height=1).pack(fill="x", pady=10)
 
         self._ctf_btn = tk.Button(
-            card, text="  Launch WhiteClaw CTF  ",
+            card, text="  Launch WhiteClaw CTF decoder  ",
             font=("Consolas", 16, "bold"),
             bg=DARK_AMBER(), fg="white",
             activebackground="#92600a",
@@ -185,7 +185,7 @@ class WhiteClawCybrApp:
         log_frame = tk.Frame(self.root, bg=BG, padx=30, pady=0)
         log_frame.pack(fill="both", expand=True)
 
-        tk.Label(log_frame, text="ACTIVITY",
+        tk.Label(log_frame, text="ACTIVITY CONSOLE",
                  font=("Consolas", 12, "bold"), fg=BG4, bg=BG, anchor="w"
                  ).pack(fill="x")
 
