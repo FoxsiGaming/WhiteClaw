@@ -40,7 +40,7 @@ class WhiteClawCybrApp:
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("WhiteClaw CYBR — Security Toolkit Hub")
-        self.root.geometry("860x600")
+        self.root.geometry("1260x800")
         self.root.resizable(False, False)
         self.root.configure(bg=BG)
 
