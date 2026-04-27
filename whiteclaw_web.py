@@ -986,7 +986,7 @@ class WhiteClawWebApp:
     def _build_status_bar(self) -> None:
         bar = tk.Frame(self.root, bg=BG, padx=20)
         bar.pack(fill="x")
-        self._status_var = tk.StringVar(value="Ready — paste a URL and press SCAN.")
+        self._status_var = tk.StringVar(value="Ready? paste a URL and press SCAN.")
         tk.Label(bar, textvariable=self._status_var, font=("Consolas", 15),
                  fg=FG2, bg=BG).pack(side="left", pady=3)
         self._progress = ttk.Progressbar(bar, style="Horizontal.TProgressbar",
