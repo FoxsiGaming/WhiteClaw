@@ -353,6 +353,20 @@ MORSE_TABLE: dict[str, str] = {
 
 BASE58_CHARS = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
 
+# Precomputed lookup tables for CTF solver hot paths (built once at import time)
+_XOR_FREQ_TBL: list[int] = [
+    int(ENGLISH_FREQ.get(chr(b).lower(), 0.0) * 1000) if chr(b).isalpha() else 0
+    for b in range(256)
+]
+_XOR_PRINT_TBL: list[int] = [
+    1 if (32 <= b <= 126 or b in (9, 10, 13)) else 0
+    for b in range(256)
+]
+_ROT47_TABLE = str.maketrans(
+    ''.join(chr(c) for c in range(33, 127)),
+    ''.join(chr(33 + (c - 33 + 47) % 94) for c in range(33, 127)),
+)
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Traffic cover — browser-like UAs used for all attack/probe requests
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1442,22 +1456,21 @@ class CTFSolverEngine:
     def _try_rot47(self, t: str) -> str | None:
         if not any(33 <= ord(c) <= 126 for c in t):
             return None
-        result = ''.join(
-            chr(33 + (ord(c) - 33 + 47) % 94) if 33 <= ord(c) <= 126 else c
-            for c in t
-        )
+        result = t.translate(_ROT47_TABLE)
         return result if result != t else None
 
     def _try_caesar(self, t: str) -> tuple[str, str] | None:
         if not re.search(r'[A-Za-z]', t):
             return None
+        upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+        lower = 'abcdefghijklmnopqrstuvwxyz'
         best_shift, best_score, best_text = 0, -1.0, t
         for shift in range(1, 26):
-            shifted = ''.join(
-                chr((ord(c) - 65 + shift) % 26 + 65) if 'A' <= c <= 'Z' else
-                chr((ord(c) - 97 + shift) % 26 + 97) if 'a' <= c <= 'z' else c
-                for c in t
+            table = str.maketrans(
+                upper + lower,
+                upper[shift:] + upper[:shift] + lower[shift:] + lower[:shift],
             )
+            shifted = t.translate(table)
             score = self._score_english(shifted)
             if score > best_score:
                 best_score, best_shift, best_text = score, shift, shifted
@@ -1468,11 +1481,11 @@ class CTFSolverEngine:
     def _try_atbash(self, t: str) -> str | None:
         if not re.search(r'[A-Za-z]', t):
             return None
-        result = ''.join(
-            chr(90  - (ord(c) - 65)) if 'A' <= c <= 'Z' else
-            chr(122 - (ord(c) - 97)) if 'a' <= c <= 'z' else c
-            for c in t
+        table = str.maketrans(
+            'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',
+            'ZYXWVUTSRQPONMLKJIHGFEDCBAzyxwvutsrqponmlkjihgfedcba',
         )
+        result = t.translate(table)
         return result if result != t else None
 
     def _try_xor_single(self, t: str) -> list[tuple[str, str]]:
@@ -1480,21 +1493,44 @@ class CTFSolverEngine:
         if not re.fullmatch(r'[0-9a-fA-F]+', clean) or len(clean) % 2 != 0 or len(clean) < 4:
             return []
         try:
-            ct = bytes.fromhex(clean)
+            ct = bytearray.fromhex(clean)
         except Exception:
             return []
+        n = len(ct)
+        threshold_print = n * 0.75
+
+        # Build byte-frequency histogram so each key is scored in O(256) not O(n)
+        byte_cnt = [0] * 256
+        for b in ct:
+            byte_cnt[b] += 1
+
         scored: list[tuple[float, str, str]] = []
         for key in range(1, 256):
+            raw_score = n_alpha = n_print = 0
+            for cb in range(256):
+                cnt = byte_cnt[cb]
+                if not cnt:
+                    continue
+                xb = cb ^ key
+                n_print += _XOR_PRINT_TBL[xb] * cnt
+                v = _XOR_FREQ_TBL[xb]
+                if v:
+                    n_alpha += cnt
+                    raw_score += v * cnt
+
+            if n_print < threshold_print or n_alpha == 0:
+                continue
+            score = raw_score / (n_alpha * 1000)
+            if score <= 3.0:
+                continue
+
             pt_bytes = bytes(b ^ key for b in ct)
             try:
                 pt = pt_bytes.decode('utf-8')
             except UnicodeDecodeError:
-                continue
-            if not self._is_printable(pt):
-                continue
-            score = self._score_english(pt)
-            if score > 3.0:
-                scored.append((score, f"XOR key=0x{key:02x}", pt))
+                pt = pt_bytes.decode('latin-1')
+            scored.append((score, f"XOR key=0x{key:02x}", pt))
+
         scored.sort(reverse=True)
         return [(m, txt) for _, m, txt in scored[:3]]
 
@@ -1539,13 +1575,15 @@ class CTFSolverEngine:
 
     def all_caesar_rotations(self, t: str) -> list[tuple[int, float, str]]:
         """Return [(shift, english_score, decoded), ...] for shifts 1-25."""
+        upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+        lower = 'abcdefghijklmnopqrstuvwxyz'
         results = []
         for shift in range(1, 26):
-            shifted = ''.join(
-                chr((ord(c) - 65 + shift) % 26 + 65) if 'A' <= c <= 'Z' else
-                chr((ord(c) - 97 + shift) % 26 + 97) if 'a' <= c <= 'z' else c
-                for c in t
+            table = str.maketrans(
+                upper + lower,
+                upper[shift:] + upper[:shift] + lower[shift:] + lower[:shift],
             )
+            shifted = t.translate(table)
             results.append((shift, round(self._score_english(shifted), 2), shifted))
         results.sort(key=lambda x: x[1], reverse=True)
         return results
@@ -1553,10 +1591,12 @@ class CTFSolverEngine:
     # ── helpers ───────────────────────────────────────────────────────────────
 
     def _score_english(self, text: str) -> float:
-        alpha = [c.lower() for c in text if c.isalpha()]
-        if not alpha:
-            return 0.0
-        return sum(ENGLISH_FREQ.get(c, 0.0) for c in alpha) / len(alpha)
+        total = freq_count = 0.0
+        for c in text:
+            if c.isalpha():
+                total += ENGLISH_FREQ.get(c.lower(), 0.0)
+                freq_count += 1.0
+        return total / freq_count if freq_count else 0.0
 
     def _is_printable(self, text: str) -> bool:
         if not text:
@@ -1768,6 +1808,14 @@ class WhiteClawApp:
                                      state="disabled")
         self._export_btn.pack(side="left", padx=4)
 
+        self._export_all_btn = tk.Button(row1, text="Export All Findings",
+                                         font=("Consolas", 16), bg=BG3, fg=FG2,
+                                         activebackground=BG4, relief="flat",
+                                         padx=10, pady=3,
+                                         command=self._export_all_findings,
+                                         state="disabled")
+        self._export_all_btn.pack(side="left", padx=4)
+
         # ── Row 2: AI provider + model + API key ──────────────────────────────
         row2 = tk.Frame(self.root, bg=BG2, padx=20, pady=4)
         row2.pack(fill="x")
@@ -1907,6 +1955,7 @@ class WhiteClawApp:
         self._sev_counts = {s: 0 for s in SEV_COLOR}
         self._update_counters()
         self._export_btn.config(state="disabled")
+        self._export_all_btn.config(state="disabled")
         self._scan_btn.config(state="disabled", text="SCANNING…")
         self._progress.start(12)
         self._scan_url = url
@@ -1958,6 +2007,7 @@ class WhiteClawApp:
                 f"| MED {self._sev_counts['MEDIUM']}"
             )
             self._export_btn.config(state="normal")
+            self._export_all_btn.config(state="normal")
             self._log_to("log", "INFO", "─" * 60)
             self._log_to("log", "INFO", "Scan complete. Switch to the AI Report tab and generate.")
             threading.Thread(
@@ -2356,6 +2406,67 @@ class WhiteClawApp:
                     f.write(content + "\n")
 
         messagebox.showinfo("Exported", f"Report saved:\n{path}")
+
+    def _export_all_findings(self) -> None:
+        if not self._findings:
+            messagebox.showinfo("No findings", "Run a scan first.")
+            return
+
+        path = filedialog.asksaveasfilename(
+            defaultextension=".txt",
+            filetypes=[("Text file", "*.txt"), ("All files", "*.*")],
+            title="Save All Findings — WhiteClaw",
+        )
+        if not path:
+            return
+
+        flat: list[dict] = []
+        for items in self._findings.values():
+            flat.extend(items)
+
+        sev_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 4}
+        flat.sort(key=lambda f: sev_order.get(f.get("severity", "INFO"), 5))
+
+        sev_counts: dict[str, int] = {}
+        for f in flat:
+            s = f.get("severity", "INFO")
+            sev_counts[s] = sev_counts.get(s, 0) + 1
+
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        lines = [
+            "WhiteClaw — All Findings Report",
+            "=" * 70,
+            f"Target : {self._scan_url}",
+            f"Date   : {now}",
+            f"Total  : {len(flat)} finding(s)",
+            "  " + "  ".join(
+                f"{s}: {sev_counts[s]}"
+                for s in ("CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO")
+                if s in sev_counts
+            ),
+            "=" * 70,
+            "",
+        ]
+
+        for idx, f in enumerate(flat, 1):
+            lines += [
+                f"Finding #{idx}",
+                "-" * 50,
+                f"Severity : {f.get('severity', '?')}",
+                f"Category : {f.get('category', '?')}",
+                f"Title    : {f.get('title', '')}",
+                "",
+            ]
+            if f.get("detail"):
+                lines += ["Detail:", f.get("detail", ""), ""]
+            if f.get("fix"):
+                lines += ["Remediation:", f.get("fix", ""), ""]
+            lines.append("")
+
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write("\n".join(lines))
+
+        messagebox.showinfo("Exported", f"All {len(flat)} findings saved to:\n{path}")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
