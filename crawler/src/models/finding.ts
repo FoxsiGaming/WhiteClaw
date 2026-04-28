@@ -1,7 +1,7 @@
 export interface ScanConfig {
   url: string;
   base_url: string;
-  timeout: number; // ms, default 30000
+  timeout?: number; // ms, default 30000
 }
 
 export interface Finding {

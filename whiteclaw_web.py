@@ -344,7 +344,7 @@ class WhiteClawWebApp:
         self.root = root
         self.root.title("WhiteClaw WEB — Web Security Scanner")
         self.root.geometry("1280x820")
-        self.root.minsize(900, 600)
+        self.root.minsize(1200, 700)
         self.root.configure(bg=BG)
 
         self._findings: dict      = {}

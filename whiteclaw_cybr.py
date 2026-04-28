@@ -71,7 +71,7 @@ class WhiteClawCybrApp:
         tk.Label(top, text="  Security Toolkit Hub",
                  font=("Consolas", 18), fg=FG2, bg=BG2).pack(side="left", pady=2)
 
-        ver = tk.Label(top, text="v2.1 | Authorized use only",
+        ver = tk.Label(top, text="v3.0 | Authorized use only",
                        font=("Consolas", 13), fg=BG4, bg=BG2)
         ver.pack(side="right")
 
@@ -87,7 +87,7 @@ class WhiteClawCybrApp:
         color = GREEN if self._pulse_state else BG2
         self._pulse_canvas.itemconfig(self._dot, fill=color)
         self._pulse_state = not self._pulse_state
-        self.root.after(900, self._pulse)
+        self.root.after(1000, self._pulse)
 
     # ── tool cards ────────────────────────────────────────────────────────────
 

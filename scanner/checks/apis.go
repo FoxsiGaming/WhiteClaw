@@ -85,12 +85,12 @@ func APIs(client *http.Client, cfg models.ScanConfig) {
 			seen[ep] = true
 
 			wg.Add(1)
-			ep := ep
+			epCopy := ep
 			sem.Acquire()
 			go func() {
 				defer wg.Done()
 				defer sem.Release()
-				u := strings.TrimRight(cfg.BaseURL, "/") + ep
+				u := strings.TrimRight(cfg.BaseURL, "/") + epCopy
 				r, err := get(client, u)
 				if err != nil {
 					return
