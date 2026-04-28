@@ -1,59 +1,98 @@
 # WhiteClaw CYBR
 
-**Security Toolkit Hub** — Web scanner + CTF cipher solver, split into focused standalone tools.
+**Security Toolkit Hub** — Web vulnerability scanner + CTF cipher solver.
 
 > **For authorized use only.** Only test systems you own or have explicit written permission to test.
 
 ---
 
-## Tools
+## Getting Started
 
-| Tool | File | Purpose | Color |
-|------|------|---------|-------|
-| **WhiteClaw CYBR** | `whiteclaw_cybr.py` | Hub launcher | Deep purple |
-| **WhiteClaw WEB** | `whiteclaw_web.py` | Web security scanner | Green |
-| **WhiteClaw CTF** | `whiteclaw_ctf.py` | Cipher & encoding solver | Amber |
+### 1. Prerequisites
+
+| Requirement | Version | Notes |
+|-------------|---------|-------|
+| **Python** | 3.10 or newer | [python.org/downloads](https://www.python.org/downloads/) — tick **"Add Python to PATH"** during install |
+| **Go** *(optional)* | 1.22+ | [go.dev/dl](https://go.dev/dl/) — enables the fast Go scanner |
+| **Node.js** *(optional)* | LTS | [nodejs.org](https://nodejs.org/) — enables the Playwright DOM crawler |
+
+tkinter ships with the standard Python installer on Windows and macOS. Linux users may need `sudo apt install python3-tk`.
 
 ---
 
-## Quick Start
+### 2. Download
+
+**Option A — Git clone**
+```bash
+git clone https://github.com/FoxsiGaming/WhiteClaw.git
+cd WhiteClaw
+```
+
+**Option B — ZIP download**
+
+1. Click the green **Code** button on the GitHub page
+2. Select **Download ZIP**
+3. Extract the ZIP and open a terminal inside the extracted folder
+
+---
+
+### 3. Install & Run
+
+#### Quick start (Python only)
+
+Run the startup script — it checks your Python version, installs missing packages automatically, then launches the hub:
 
 ```bash
 python start.py
 ```
 
-`start.py` checks your Python version, installs missing packages, verifies all tool files are present, then opens the **WhiteClaw CYBR** hub. From the hub click either **Launch WhiteClaw WEB** or **Launch WhiteClaw CTF** — each tool opens as a separate independent window.
+That's it. The **WhiteClaw CYBR** hub window opens. From there, click **Launch WhiteClaw WEB** or **Launch WhiteClaw CTF**.
 
-You can also launch each tool directly:
+---
+
+#### Full setup (Go scanner + Node.js crawler)
+
+For full performance, run the installer first. It builds the Go scanner binary and the TypeScript/Playwright crawler, then prints a readiness table:
 
 ```bash
-python whiteclaw_web.py
-python whiteclaw_ctf.py
+python installer.py
+```
+
+After the installer completes, launch normally:
+
+```bash
+python start.py
 ```
 
 ---
 
-## Requirements
+#### Manual package install (optional)
 
-- Python 3.9 or newer
-- `tkinter` (included with most Python installers; on Linux: `sudo apt install python3-tk`)
-
-Packages installed automatically by `start.py`:
-
-```
-requests>=2.31.0
-beautifulsoup4>=4.12.0
-urllib3>=2.0.0
-anthropic>=0.34.0
-openai>=1.30.0
-google-genai>=1.0.0
-```
-
-To install manually:
+If you prefer to install dependencies yourself before running:
 
 ```bash
 pip install -r requirements.txt
 ```
+
+---
+
+### 4. Launch individual tools directly
+
+```bash
+python whiteclaw_cybr.py   # Hub
+python whiteclaw_web.py    # Web scanner only
+python whiteclaw_ctf.py    # CTF solver only
+```
+
+---
+
+## Tools
+
+| Tool | File | Purpose |
+|------|------|---------|
+| **WhiteClaw CYBR** | `whiteclaw_cybr.py` | Hub launcher |
+| **WhiteClaw WEB** | `whiteclaw_web.py` | Web security scanner |
+| **WhiteClaw CTF** | `whiteclaw_ctf.py` | Cipher & encoding solver |
 
 ---
 
@@ -68,7 +107,7 @@ A web vulnerability scanner that runs 18 automated checks against a target URL.
 3. Review findings across the tabs: **Vulnerabilities**, **APIs**, **Database**, **CTF Artifacts**, **General Info**
 4. Optionally generate an **AI Report** using Claude / GPT-4o / Gemini
 
-### Scan steps
+### Scan checks
 
 | # | Check | What it finds |
 |---|-------|---------------|
@@ -93,7 +132,7 @@ A web vulnerability scanner that runs 18 automated checks against a target URL.
 
 ### Log-only mode
 
-Check **Log only (no report files)** in the toolbar before scanning. When enabled, only `reports/<domain>/scan_log.txt` is written — no individual `.txt` file per finding. Useful when you just want a session summary.
+Check **Log only (no report files)** in the toolbar before scanning. Only `reports/<domain>/scan_log.txt` is written — no individual `.txt` file per finding. Useful for quick session summaries.
 
 ### Report files
 
@@ -105,7 +144,7 @@ reports/
     20260427_211500_001_CRITICAL_env_file_exposed.txt
     20260427_211500_002_HIGH_Missing_header_HSTS.txt
     ...
-    scan_log.txt    ← session summary, always appended
+    scan_log.txt
 ```
 
 Use **Export Report** to save the on-screen text as one `.txt` file, or **Export All Findings** to save all findings sorted by severity into a single structured file.
@@ -113,8 +152,6 @@ Use **Export Report** to save the on-screen text as one `.txt` file, or **Export
 ### AI Report
 
 Select an AI provider and paste your API key in the toolbar, then click **Generate AI Report** after a scan. The report includes executive summary, risk rating, finding details with CWE/OWASP references, attack chains, remediation roadmap, and compliance notes.
-
-Supported providers:
 
 | Provider | Models |
 |----------|--------|
@@ -149,14 +186,10 @@ An auto-solver for CTF cipher and encoding challenges. Paste ciphertext and pres
 | XOR single-byte | Brute-forces keys 0x01–0xFF (input must be hex-encoded) |
 | RSA detection | Finds `n`, `e`, `c` parameters and prints solution steps |
 
-### Performance
-
-The XOR solver uses a byte-frequency histogram and precomputed tables so each of the 255 keys is scored in O(256 distinct bytes) rather than O(n·255) with string allocations. Caesar, Atbash, and ROT47 use `str.translate` (C-level) instead of per-character Python loops.
-
 ### Tips
 
 - **XOR**: input must be the raw ciphertext as a hex string (e.g. `4a2f3c…`), not ASCII.
-- **Caesar table**: shows all 25 rotations sorted by English frequency score. Useful when auto-solve doesn't find a flag.
+- **Caesar table**: shows all 25 rotations sorted by English frequency score.
 - **Custom flag regex**: override the default multi-platform pattern for non-standard CTF flag formats.
 - **Ctrl+Enter**: keyboard shortcut to run auto-solve.
 - **Save result**: exports the current output to a `.txt` file.
@@ -168,17 +201,18 @@ The XOR solver uses a byte-frequency histogram and precomputed tables so each of
 
 ```
 WhiteClaw/
-├── start.py             ← Run this first
+├── start.py             ← Run this to launch the app
+├── installer.py         ← Run this for full setup (Go + Node.js)
 ├── whiteclaw_cybr.py    ← Hub GUI (WhiteClaw CYBR)
 ├── whiteclaw_web.py     ← Web scanner (WhiteClaw WEB)
 ├── whiteclaw_ctf.py     ← CTF solver (WhiteClaw CTF)
-├── whiteclaw.py         ← Original monolithic version (kept as reference)
 ├── requirements.txt     ← Pip package list
-├── reports/             ← Scan output (created automatically)
-│   └── <domain>/
-│       ├── scan_log.txt
-│       └── *.txt
-└── README.md
+├── scanner/             ← Go scanner source + binary
+├── crawler/             ← TypeScript/Playwright crawler source
+└── reports/             ← Scan output (created automatically)
+    └── <domain>/
+        ├── scan_log.txt
+        └── *.txt
 ```
 
 ---
