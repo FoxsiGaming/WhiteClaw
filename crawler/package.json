@@ -1,0 +1,17 @@
+{
+  "name": "whiteclaw-crawler",
+  "version": "1.0.0",
+  "description": "WhiteClaw DOM/SPA crawler — TypeScript/Playwright",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "playwright": "^1.44.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.4.0"
+  }
+}

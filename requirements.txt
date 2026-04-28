@@ -1,9 +1,11 @@
-# Core (always required)
-requests>=2.31.0
-beautifulsoup4>=4.12.0
-urllib3>=2.0.0
-
 # AI providers — install at least one
 anthropic>=0.34.0
 openai>=1.30.0
 google-genai>=1.0.0
+
+# HTTP (urllib3 still used internally by other packages)
+urllib3>=2.0.0
+
+# Note: requests and beautifulsoup4 are no longer needed.
+# All HTTP scanning is handled by the Go scanner binary.
+# All DOM parsing is handled by the TypeScript/Playwright crawler.
