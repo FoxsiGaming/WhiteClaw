@@ -45,9 +45,26 @@ class WhiteClawCybrApp:
         self.root.configure(bg=BG)
 
         self._processes: list[subprocess.Popen] = []
+        self._load_assets()
         self._build_styles()
         self._build_ui()
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
+
+    def _load_assets(self) -> None:
+        pic = HERE / "pic"
+        try:
+            icon = tk.PhotoImage(file=str(pic / "favicon.png"))
+            self.root.iconphoto(True, icon)
+            self._favicon = icon
+        except Exception:
+            self._favicon = None
+        try:
+            src = tk.PhotoImage(file=str(pic / "favicon.png"))
+            factor = max(1, src.height() // 52)
+            self._logo_img = src.subsample(factor, factor)
+            self._logo_src = src
+        except Exception:
+            self._logo_img = None
 
     def _build_styles(self) -> None:
         s = ttk.Style()
@@ -66,12 +83,14 @@ class WhiteClawCybrApp:
         top = tk.Frame(self.root, bg=BG2, pady=18, padx=30)
         top.pack(fill="x")
 
+        if self._logo_img:
+            tk.Label(top, image=self._logo_img, bg=BG2).pack(side="left", padx=(0, 12))
         tk.Label(top, text="⬡ WhiteClaw CYBR",
                  font=("Consolas", 32, "bold"), fg=PURPLE, bg=BG2).pack(side="left")
         tk.Label(top, text="  Security Toolkit Hub",
                  font=("Consolas", 18), fg=FG2, bg=BG2).pack(side="left", pady=2)
 
-        ver = tk.Label(top, text="v3.0 | Authorized use only",
+        ver = tk.Label(top, text="v3.1 | Authorized use only",
                        font=("Consolas", 13), fg=BG4, bg=BG2)
         ver.pack(side="right")
 
@@ -263,9 +282,9 @@ def DARK_AMBER() -> str:
     return "#b45309"
 
 def _detach_flags() -> int:
-    """Windows: CREATE_NEW_CONSOLE so each tool gets its own window."""
+    """Windows: CREATE_NO_WINDOW hides the console for GUI tools launched from the hub."""
     if sys.platform == "win32":
-        return 0x00000010  # CREATE_NEW_CONSOLE
+        return 0x08000000  # CREATE_NO_WINDOW
     return 0
 
 

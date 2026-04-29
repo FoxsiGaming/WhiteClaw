@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m pytest tests/ --collect-only -q)",
+      "Bash(python -m pytest tests/active/ --collect-only -q)",
+      "Bash(python -m pytest tests/destructive/ --collect-only -q)"
+    ]
+  }
+}

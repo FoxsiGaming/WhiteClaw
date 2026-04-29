@@ -13,6 +13,7 @@ import base64
 import urllib.parse
 import html as _html_mod
 from datetime import datetime
+from pathlib import Path
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Colour palette — amber / hacker terminal
@@ -498,9 +499,26 @@ class WhiteClawCTFApp:
         self._history: list[dict] = []
         self._engine = CTFSolverEngine()
 
+        self._load_assets()
         self._build_styles()
         self._build_ui()
         self.root.bind("<Control-Return>", lambda _: self._run_solver())
+
+    def _load_assets(self) -> None:
+        pic = Path(__file__).parent / "pic"
+        try:
+            icon = tk.PhotoImage(file=str(pic / "favicon.png"))
+            self.root.iconphoto(True, icon)
+            self._favicon = icon
+        except Exception:
+            self._favicon = None
+        try:
+            src = tk.PhotoImage(file=str(pic / "favicon.png"))
+            factor = max(1, src.height() // 48)
+            self._logo_img = src.subsample(factor, factor)
+            self._logo_src = src
+        except Exception:
+            self._logo_img = None
 
     def _build_styles(self) -> None:
         s = ttk.Style()
@@ -524,6 +542,8 @@ class WhiteClawCTFApp:
     def _build_header(self) -> None:
         bar = tk.Frame(self.root, bg=BG2, pady=10, padx=20)
         bar.pack(fill="x")
+        if self._logo_img:
+            tk.Label(bar, image=self._logo_img, bg=BG2).pack(side="left", padx=(0, 10))
         tk.Label(bar, text="⬡ WhiteClaw CTF",
                  font=("Consolas", 26, "bold"), fg=AMBER, bg=BG2).pack(side="left")
         tk.Label(bar, text="  Cipher & Encoding Auto-Solver",

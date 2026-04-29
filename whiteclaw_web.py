@@ -181,6 +181,7 @@ class WhiteClawOrchestrator:
                 stderr=subprocess.DEVNULL,
                 text=True,
                 encoding="utf-8",
+                creationflags=(0x08000000 if sys.platform == "win32" else 0),
             )
             self._procs.append(proc)
             proc.stdin.write(json.dumps(config))
@@ -353,8 +354,25 @@ class WhiteClawWebApp:
         self._scan_timeline: list = []   # ordered record of every event for AI context
         self._log_only_var        = tk.BooleanVar(value=False)
 
+        self._load_assets()
         self._build_styles()
         self._build_ui()
+
+    def _load_assets(self) -> None:
+        pic = Path(__file__).parent / "pic"
+        try:
+            icon = tk.PhotoImage(file=str(pic / "favicon.png"))
+            self.root.iconphoto(True, icon)
+            self._favicon = icon
+        except Exception:
+            self._favicon = None
+        try:
+            src = tk.PhotoImage(file=str(pic / "favicon.png"))
+            factor = max(1, src.height() // 48)
+            self._logo_img = src.subsample(factor, factor)
+            self._logo_src = src
+        except Exception:
+            self._logo_img = None
 
     def _build_styles(self) -> None:
         s = ttk.Style()
@@ -379,6 +397,8 @@ class WhiteClawWebApp:
     def _build_header(self) -> None:
         bar = tk.Frame(self.root, bg=BG2, pady=10, padx=20)
         bar.pack(fill="x")
+        if self._logo_img:
+            tk.Label(bar, image=self._logo_img, bg=BG2).pack(side="left", padx=(0, 10))
         tk.Label(bar, text="⬡ WhiteClaw WEB",
                  font=("Consolas", 28, "bold"), fg=GREEN, bg=BG2).pack(side="left")
         tk.Label(bar, text="  Web Security Scanner",
