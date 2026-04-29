@@ -86,7 +86,7 @@ class WhiteClawCybrApp:
         tk.Label(top, text="  Security Toolkit Hub",
                  font=("Consolas", 18), fg=FG2, bg=BG2).pack(side="left", pady=2)
 
-        ver = tk.Label(top, text="v3.1 | Authorized use only",
+        ver = tk.Label(top, text="v3.2 | Authorized use only",
                        font=("Consolas", 13), fg=BG4, bg=BG2)
         ver.pack(side="right")
 
