@@ -46,20 +46,10 @@ _CTX = ssl.create_default_context()
 _CTX.check_hostname = False
 _CTX.verify_mode = ssl.CERT_NONE
 
-_USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3 Safari/605.1.15",
-    "Mozilla/5.0 (X11; Linux x86_64; rv:124.0) Gecko/20100101 Firefox/124.0",
-]
-_ua_idx = 0
-_ua_lock = threading.Lock()
+_UA = "WhiteClaw-Scanner/3.1 (H1whiteclaw)"
 
 def _ua() -> str:
-    global _ua_idx
-    with _ua_lock:
-        ua = _USER_AGENTS[_ua_idx % len(_USER_AGENTS)]
-        _ua_idx += 1
-    return ua
+    return _UA
 
 def _req(url: str, method: str = "GET", headers: dict = None,
          max_bytes: int = 512 * 1024, timeout: int = 8,

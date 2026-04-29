@@ -8,6 +8,7 @@ WhiteClaw WEB (web scanner) or WhiteClaw CTF (cipher solver).
 import sys
 import os
 import subprocess
+import importlib.util
 
 MIN_PYTHON = (3, 9)
 
@@ -41,11 +42,10 @@ def check_python():
     print(f"[OK]   Python {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}")
 
 
-def _try_import(import_name: str) -> bool:
+def _pkg_exists(import_name: str) -> bool:
     try:
-        __import__(import_name)
-        return True
-    except ImportError:
+        return importlib.util.find_spec(import_name) is not None
+    except (ModuleNotFoundError, ValueError):
         return False
 
 
@@ -53,14 +53,14 @@ def fix_deps():
     missing_specs = []
     for import_name, pip_spec in REQUIRED.items():
         label = pip_spec.split(">=")[0]
-        if _try_import(import_name):
+        if _pkg_exists(import_name):
             print(f"[OK]   {label}")
         else:
             print(f"[MISS] {label} — will install")
             missing_specs.append(pip_spec)
     for import_name, pip_spec in REQUIRED_ALT.items():
         label = pip_spec.split(">=")[0]
-        if _try_import(import_name):
+        if _pkg_exists(import_name):
             print(f"[OK]   {label}")
         else:
             print(f"[MISS] {label} — will install")

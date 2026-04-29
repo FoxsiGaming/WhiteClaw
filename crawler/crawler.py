@@ -41,8 +41,7 @@ _CTX = ssl.create_default_context()
 _CTX.check_hostname = False
 _CTX.verify_mode = ssl.CERT_NONE
 
-_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-       "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+_UA = "WhiteClaw-Scanner/3.1 (H1whiteclaw)"
 
 def _fetch(url: str, timeout: int = 30) -> tuple | None:
     """Returns (status, headers_dict, body_str) or None."""
