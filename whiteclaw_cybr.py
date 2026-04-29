@@ -51,20 +51,15 @@ class WhiteClawCybrApp:
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
     def _load_assets(self) -> None:
-        pic = HERE / "pic"
         try:
-            icon = tk.PhotoImage(file=str(pic / "favicon.png"))
-            self.root.iconphoto(True, icon)
-            self._favicon = icon
-        except Exception:
-            self._favicon = None
-        try:
-            src = tk.PhotoImage(file=str(pic / "favicon.png"))
+            src = tk.PhotoImage(file=str(HERE / "pic" / "favicon.png"))
+            self.root.iconphoto(True, src)
             factor = max(1, src.height() // 52)
             self._logo_img = src.subsample(factor, factor)
             self._logo_src = src
         except Exception:
             self._logo_img = None
+            self._logo_src = None
 
     def _build_styles(self) -> None:
         s = ttk.Style()
@@ -85,8 +80,9 @@ class WhiteClawCybrApp:
 
         if self._logo_img:
             tk.Label(top, image=self._logo_img, bg=BG2).pack(side="left", padx=(0, 12))
-        tk.Label(top, text="⬡ WhiteClaw CYBR",
-                 font=("Consolas", 32, "bold"), fg=PURPLE, bg=BG2).pack(side="left")
+        self._title_lbl = tk.Label(top, text="⬡ WhiteClaw CYBR",
+                 font=("Consolas", 32, "bold"), fg=PURPLE, bg=BG2)
+        self._title_lbl.pack(side="left")
         tk.Label(top, text="  Security Toolkit Hub",
                  font=("Consolas", 18), fg=FG2, bg=BG2).pack(side="left", pady=2)
 
@@ -101,12 +97,34 @@ class WhiteClawCybrApp:
         self._dot = self._pulse_canvas.create_oval(2, 2, 16, 16, fill=GREEN, outline="")
         self._pulse_state = True
         self._pulse()
+        self._pulse_title()
 
     def _pulse(self) -> None:
         color = GREEN if self._pulse_state else BG2
         self._pulse_canvas.itemconfig(self._dot, fill=color)
         self._pulse_state = not self._pulse_state
         self.root.after(1000, self._pulse)
+
+    def _pulse_title(self, i: int = 0) -> None:
+        colors = (PURPLE, "#8b4cf7", "#a26dfa", "#8b4cf7")
+        self._title_lbl.config(fg=colors[i % len(colors)])
+        self.root.after(700, self._pulse_title, i + 1)
+
+    def _breathe_web(self, i: int = 0) -> None:
+        colors = ("#196127", "#1d7a30", "#228c3c", "#1d7a30")
+        try:
+            self._web_btn.config(bg=colors[i % len(colors)])
+        except tk.TclError:
+            return
+        self.root.after(600, self._breathe_web, i + 1)
+
+    def _breathe_ctf(self, i: int = 0) -> None:
+        colors = ("#b45309", "#cb640d", "#e07511", "#cb640d")
+        try:
+            self._ctf_btn.config(bg=colors[i % len(colors)])
+        except tk.TclError:
+            return
+        self.root.after(600, self._breathe_ctf, i + 1)
 
     # ── tool cards ────────────────────────────────────────────────────────────
 
@@ -158,6 +176,7 @@ class WhiteClawCybrApp:
             command=self._launch_web,
         )
         self._web_btn.pack(fill="x")
+        self._breathe_web()
 
     def _build_ctf_card(self, parent: tk.Frame) -> None:
         card = tk.Frame(parent, bg=BG2, padx=24, pady=20, relief="flat")
@@ -197,6 +216,7 @@ class WhiteClawCybrApp:
             command=self._launch_ctf,
         )
         self._ctf_btn.pack(fill="x")
+        self._breathe_ctf()
 
     # ── activity log ──────────────────────────────────────────────────────────
 
@@ -224,9 +244,17 @@ class WhiteClawCybrApp:
         ts = datetime.now().strftime("%H:%M:%S")
         self._log_text.config(state="normal")
         self._log_text.insert("end", f"[{ts}] ", "ts")
-        self._log_text.insert("end", msg + "\n", tag)
+        self._log_text.config(state="disabled")
+        self._typewrite(msg + "\n", tag, 0)
+
+    def _typewrite(self, text: str, tag: str, i: int) -> None:
+        if i >= len(text):
+            return
+        self._log_text.config(state="normal")
+        self._log_text.insert("end", text[i], tag)
         self._log_text.see("end")
         self._log_text.config(state="disabled")
+        self.root.after(14, self._typewrite, text, tag, i + 1)
 
     # ── footer ────────────────────────────────────────────────────────────────
 

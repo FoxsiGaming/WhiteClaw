@@ -1,0 +1,14 @@
+WhiteClaw WEB Finding Report
+==================================================
+Target   : https://www.epikriis.ee
+Date     : 2026-04-29 10:21:48
+Severity : MEDIUM
+Category : vulnerabilities
+
+Finding  : Missing security header: Cross-Origin-Opener-Policy
+
+Detail:
+The response does not include the "Cross-Origin-Opener-Policy" header.
+
+Remediation:
+Add: Cross-Origin-Opener-Policy: same-origin

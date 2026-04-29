@@ -1,0 +1,14 @@
+WhiteClaw WEB Finding Report
+==================================================
+Target   : https://www.epikriis.ee
+Date     : 2026-04-29 10:21:48
+Severity : INFO
+Category : vulnerabilities
+
+Finding  : HTTP OPTIONS reveals allowed methods
+
+Detail:
+Allow: OPTIONS,HEAD,GET,POST
+
+Remediation:
+Restrict allowed methods to GET/POST/HEAD in your server config.

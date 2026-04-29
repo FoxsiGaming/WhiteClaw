@@ -505,20 +505,15 @@ class WhiteClawCTFApp:
         self.root.bind("<Control-Return>", lambda _: self._run_solver())
 
     def _load_assets(self) -> None:
-        pic = Path(__file__).parent / "pic"
         try:
-            icon = tk.PhotoImage(file=str(pic / "favicon.png"))
-            self.root.iconphoto(True, icon)
-            self._favicon = icon
-        except Exception:
-            self._favicon = None
-        try:
-            src = tk.PhotoImage(file=str(pic / "favicon.png"))
+            src = tk.PhotoImage(file=str(Path(__file__).parent / "pic" / "favicon.png"))
+            self.root.iconphoto(True, src)
             factor = max(1, src.height() // 48)
             self._logo_img = src.subsample(factor, factor)
             self._logo_src = src
         except Exception:
             self._logo_img = None
+            self._logo_src = None
 
     def _build_styles(self) -> None:
         s = ttk.Style()

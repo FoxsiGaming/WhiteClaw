@@ -1,0 +1,14 @@
+WhiteClaw WEB Finding Report
+==================================================
+Target   : https://www.epikriis.ee
+Date     : 2026-04-29 10:21:48
+Severity : MEDIUM
+Category : vulnerabilities
+
+Finding  : Cookie missing Secure flag: _ga_9FXN42JS1S
+
+Detail:
+Cookie "_ga_9FXN42JS1S" can be transmitted over plain HTTP. Domain: .epikriis.ee
+
+Remediation:
+Add the Secure flag to all cookies.

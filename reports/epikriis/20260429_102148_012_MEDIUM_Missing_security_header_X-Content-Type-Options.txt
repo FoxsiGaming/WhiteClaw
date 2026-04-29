@@ -1,0 +1,14 @@
+WhiteClaw WEB Finding Report
+==================================================
+Target   : https://www.epikriis.ee
+Date     : 2026-04-29 10:21:48
+Severity : MEDIUM
+Category : vulnerabilities
+
+Finding  : Missing security header: X-Content-Type-Options
+
+Detail:
+The response does not include the "X-Content-Type-Options" header.
+
+Remediation:
+Add: X-Content-Type-Options: nosniff

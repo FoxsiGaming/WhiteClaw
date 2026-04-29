@@ -8,6 +8,7 @@ For use only on systems you own or have explicit written permission to test.
 import tkinter as tk
 from tkinter import ttk, scrolledtext, filedialog, messagebox
 import threading
+import time
 import json
 import re
 import os
@@ -21,20 +22,27 @@ import html as _html_mod
 import random
 from pathlib import Path
 
-try:
-    import anthropic as _anthropic_sdk
-except ImportError:
-    _anthropic_sdk = None
+_anthropic_sdk = None
+_openai_sdk    = None
+_genai_sdk     = None
 
-try:
-    import openai as _openai_sdk
-except ImportError:
-    _openai_sdk = None
-
-try:
-    from google import genai as _genai_sdk
-except ImportError:
-    _genai_sdk = None
+def _load_ai_sdks() -> None:
+    global _anthropic_sdk, _openai_sdk, _genai_sdk
+    try:
+        import anthropic
+        _anthropic_sdk = anthropic
+    except ImportError:
+        pass
+    try:
+        import openai
+        _openai_sdk = openai
+    except ImportError:
+        pass
+    try:
+        from google import genai
+        _genai_sdk = genai
+    except ImportError:
+        pass
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Colour palette — green / security scanner
@@ -80,6 +88,61 @@ PROVIDERS = {
         "hint":   "AIza…",
     },
 }
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Splash screen — visible while AI SDKs load in background
+# ─────────────────────────────────────────────────────────────────────────────
+class SplashScreen:
+    def __init__(self, root: tk.Tk):
+        self.root = root
+        root.overrideredirect(True)
+        root.configure(bg=BG)
+        root.attributes("-topmost", True)
+
+        w, h = 400, 240
+        sw, sh = root.winfo_screenwidth(), root.winfo_screenheight()
+        root.geometry(f"{w}x{h}+{(sw - w) // 2}+{(sh - h) // 2}")
+        self._build()
+        self._tick(0)
+
+    def _build(self) -> None:
+        try:
+            src = tk.PhotoImage(file=str(Path(__file__).parent / "pic" / "favicon.png"))
+            factor = max(1, src.height() // 72)
+            img = src.subsample(factor, factor)
+            lbl = tk.Label(self.root, image=img, bg=BG)
+            lbl.image = img
+            lbl._src = src
+            lbl.pack(pady=(28, 6))
+        except Exception:
+            tk.Label(self.root, text="⬡", font=("Consolas", 36, "bold"),
+                     fg=GREEN, bg=BG).pack(pady=(28, 6))
+
+        tk.Label(self.root, text="WhiteClaw WEB",
+                 font=("Consolas", 17, "bold"), fg=FG, bg=BG).pack()
+
+        self._status_var = tk.StringVar(value="Loading AI providers…")
+        tk.Label(self.root, textvariable=self._status_var,
+                 font=("Consolas", 11), fg=FG2, bg=BG).pack(pady=(6, 12))
+
+        self._cv = tk.Canvas(self.root, width=280, height=3,
+                              bg=BG3, highlightthickness=0)
+        self._cv.pack()
+        self._bar = self._cv.create_rectangle(0, 0, 0, 3, fill=GREEN, outline="")
+
+    def _tick(self, i: int) -> None:
+        w, bw, half = 280, 90, 40
+        pos = i % (half * 2)
+        x = pos if pos <= half else half * 2 - pos
+        x1 = int(x / half * (w - bw))
+        self._cv.coords(self._bar, x1, 0, x1 + bw, 3)
+        self._job = self.root.after(16, self._tick, i + 1)
+
+    def close(self) -> None:
+        if hasattr(self, "_job"):
+            self.root.after_cancel(self._job)
+        self.root.destroy()
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Orchestrator — spawns Go scanner + TS crawler, streams JSON to GUI callback
@@ -359,20 +422,15 @@ class WhiteClawWebApp:
         self._build_ui()
 
     def _load_assets(self) -> None:
-        pic = Path(__file__).parent / "pic"
         try:
-            icon = tk.PhotoImage(file=str(pic / "favicon.png"))
-            self.root.iconphoto(True, icon)
-            self._favicon = icon
-        except Exception:
-            self._favicon = None
-        try:
-            src = tk.PhotoImage(file=str(pic / "favicon.png"))
+            src = tk.PhotoImage(file=str(Path(__file__).parent / "pic" / "favicon.png"))
+            self.root.iconphoto(True, src)
             factor = max(1, src.height() // 48)
             self._logo_img = src.subsample(factor, factor)
             self._logo_src = src
         except Exception:
             self._logo_img = None
+            self._logo_src = None
 
     def _build_styles(self) -> None:
         s = ttk.Style()
@@ -896,6 +954,19 @@ class WhiteClawWebApp:
 
 
 def main() -> None:
+    splash_root = tk.Tk()
+    splash = SplashScreen(splash_root)
+    splash_root.update()
+
+    t = threading.Thread(target=_load_ai_sdks, daemon=True)
+    t.start()
+
+    while t.is_alive():
+        splash_root.update()
+        time.sleep(0.016)
+
+    splash.close()
+
     root = tk.Tk()
     WhiteClawWebApp(root)
     root.mainloop()

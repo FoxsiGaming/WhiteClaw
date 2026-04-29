@@ -1,0 +1,14 @@
+WhiteClaw WEB Finding Report
+==================================================
+Target   : https://www.epikriis.ee
+Date     : 2026-04-29 10:21:48
+Severity : HIGH
+Category : vulnerabilities
+
+Finding  : Missing security header: Strict-Transport-Security
+
+Detail:
+The response does not include the "Strict-Transport-Security" header.
+
+Remediation:
+Add: Strict-Transport-Security: max-age=31536000; includeSubDomains; preload

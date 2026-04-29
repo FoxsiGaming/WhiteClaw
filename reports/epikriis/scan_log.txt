@@ -1,0 +1,25 @@
+
+============================================================
+SCAN SESSION — 2026-04-29 10:21:48
+Target : https://www.epikriis.ee
+Mode   : Full reports
+Total  : 19 finding(s)  HIGH:3  INFO:7  LOW:2  MEDIUM:7
+  [INFO    ] API endpoint found: /api
+  [INFO    ] Dynamic API call intercepted: GET /hinnakiri/index.txt
+  [INFO    ] Dynamic API call intercepted: GET /liitumine/index.txt
+  [INFO    ] Dynamic API call intercepted: GET /kontakt/index.txt
+  [INFO    ] Dynamic API call intercepted: GET /login/index.txt
+  [INFO    ] Dynamic API call intercepted: GET /demo/index.txt
+  [LOW     ] Server disclosure: Server
+  [INFO    ] HTTP OPTIONS reveals allowed methods
+  [HIGH    ] Missing security header: Strict-Transport-Security
+  [HIGH    ] Missing security header: Content-Security-Policy
+  [HIGH    ] Missing security header: X-Frame-Options
+  [MEDIUM  ] Missing security header: X-Content-Type-Options
+  [MEDIUM  ] Missing security header: Referrer-Policy
+  [LOW     ] Missing security header: Permissions-Policy
+  [MEDIUM  ] Missing security header: Cross-Origin-Opener-Policy
+  [MEDIUM  ] Cookie missing HttpOnly (JS-accessible): _ga_9FXN42JS1S
+  [MEDIUM  ] Cookie missing Secure flag: _ga_9FXN42JS1S
+  [MEDIUM  ] Cookie missing HttpOnly (JS-accessible): _ga
+  [MEDIUM  ] Cookie missing Secure flag: _ga
