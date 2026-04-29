@@ -4,7 +4,7 @@ TIMEOUT = 10  # seconds per request
 
 # Set True only after obtaining written authorization for the target.
 # Destructive tests modify data, trigger lockouts, or generate significant load.
-ENABLE_DESTRUCTIVE_TESTS = False
+ENABLE_DESTRUCTIVE_TESTS = True
 
 # Optional bearer token / session cookie for auth-required tests.
 # Leave empty to skip auth-dependent checks.
