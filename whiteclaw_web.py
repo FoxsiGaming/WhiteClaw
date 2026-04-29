@@ -465,78 +465,84 @@ class WhiteClawWebApp:
                  font=("Consolas", 15), fg=RED, bg=BG2).pack(side="right")
 
     def _build_toolbar(self) -> None:
-        row1 = tk.Frame(self.root, bg=BG2, padx=20, pady=6)
+        # ── Row 1: URL + SCAN (entry expands with window) ─────────────────────
+        row1 = tk.Frame(self.root, bg=BG2, padx=20, pady=8)
         row1.pack(fill="x")
+        row1.columnconfigure(1, weight=1)
 
         tk.Label(row1, text="URL:", font=("Consolas", 16),
-                 fg=FG2, bg=BG2).pack(side="left")
+                 fg=FG2, bg=BG2).grid(row=0, column=0, sticky="w", padx=(0, 8))
         self._url_var = tk.StringVar()
-        url_entry = tk.Entry(row1, textvariable=self._url_var, font=("Consolas", 17),
-                             bg=BG3, fg=FG, insertbackground=GREEN,
-                             relief="flat", bd=6, width=64)
-        url_entry.pack(side="left", padx=8, ipady=3)
+        url_entry = tk.Entry(row1, textvariable=self._url_var, font=("Consolas", 16),
+                             bg=BG3, fg=FG, insertbackground=GREEN, relief="flat", bd=6)
+        url_entry.grid(row=0, column=1, sticky="ew", padx=4, ipady=4)
         url_entry.insert(0, "https://")
         url_entry.bind("<Return>", lambda _: self._start_scan())
 
-        self._scan_btn = tk.Button(row1, text="  SCAN  ", font=("Consolas", 17, "bold"),
+        self._scan_btn = tk.Button(row1, text="  SCAN  ", font=("Consolas", 16, "bold"),
                                    bg=DARK_GRN, fg="white", activebackground="#2ea043",
-                                   relief="flat", padx=12, pady=3,
+                                   relief="flat", padx=14, pady=4,
                                    command=self._start_scan)
-        self._scan_btn.pack(side="left", padx=4)
+        self._scan_btn.grid(row=0, column=2, sticky="e", padx=(8, 0))
 
-        self._export_btn = tk.Button(row1, text="Export Report",
-                                     font=("Consolas", 15), bg=BG3, fg=FG2,
+        # ── Row 2: export actions + log-only ──────────────────────────────────
+        row2 = tk.Frame(self.root, bg=BG2, padx=20, pady=4)
+        row2.pack(fill="x")
+
+        self._export_btn = tk.Button(row2, text="Export Report",
+                                     font=("Consolas", 14), bg=BG3, fg=FG2,
                                      activebackground=BG4, relief="flat",
                                      padx=10, pady=3, command=self._export_report,
                                      state="disabled")
-        self._export_btn.pack(side="left", padx=4)
+        self._export_btn.pack(side="left", padx=(0, 4))
 
-        self._export_all_btn = tk.Button(row1, text="Export All Findings",
-                                         font=("Consolas", 15), bg=BG3, fg=FG2,
+        self._export_all_btn = tk.Button(row2, text="Export All Findings",
+                                         font=("Consolas", 14), bg=BG3, fg=FG2,
                                          activebackground=BG4, relief="flat",
                                          padx=10, pady=3, command=self._export_all_findings,
                                          state="disabled")
         self._export_all_btn.pack(side="left", padx=4)
 
-        # Log-only checkbox
+        tk.Frame(row2, bg=BG4, width=1).pack(side="left", fill="y", padx=14)
+
         tk.Checkbutton(
-            row1, text="Log only (no report files)",
+            row2, text="Log only (no report files)",
             variable=self._log_only_var,
-            font=("Consolas", 14), fg=FG2, bg=BG2,
+            font=("Consolas", 13), fg=FG2, bg=BG2,
             selectcolor=BG3, activebackground=BG2, activeforeground=GREEN,
             relief="flat",
-        ).pack(side="left", padx=12)
+        ).pack(side="left")
 
-        # Row 2: AI settings
-        row2 = tk.Frame(self.root, bg=BG2, padx=20, pady=4)
-        row2.pack(fill="x")
+        # ── Row 3: AI provider settings ───────────────────────────────────────
+        row3 = tk.Frame(self.root, bg=BG2, padx=20, pady=4)
+        row3.pack(fill="x")
 
-        tk.Label(row2, text="AI Provider:", font=("Consolas", 16),
+        tk.Label(row3, text="AI:", font=("Consolas", 15),
                  fg=FG2, bg=BG2).pack(side="left")
         self._provider_var = tk.StringVar(value=list(PROVIDERS.keys())[0])
-        provider_cb = ttk.Combobox(row2, textvariable=self._provider_var,
+        provider_cb = ttk.Combobox(row3, textvariable=self._provider_var,
                                    values=list(PROVIDERS.keys()),
-                                   state="readonly", width=20, font=("Consolas", 16))
-        provider_cb.pack(side="left", padx=8, ipady=2)
+                                   state="readonly", width=20, font=("Consolas", 15))
+        provider_cb.pack(side="left", padx=(6, 14), ipady=2)
         provider_cb.bind("<<ComboboxSelected>>", self._on_provider_change)
 
-        tk.Label(row2, text="Model:", font=("Consolas", 16),
-                 fg=FG2, bg=BG2).pack(side="left", padx=(4, 0))
+        tk.Label(row3, text="Model:", font=("Consolas", 15),
+                 fg=FG2, bg=BG2).pack(side="left")
         self._model_var = tk.StringVar(value=PROVIDERS[list(PROVIDERS.keys())[0]]["models"][0])
-        self._model_cb = ttk.Combobox(row2, textvariable=self._model_var,
+        self._model_cb = ttk.Combobox(row3, textvariable=self._model_var,
                                       values=PROVIDERS[list(PROVIDERS.keys())[0]]["models"],
-                                      state="readonly", width=26, font=("Consolas", 16))
-        self._model_cb.pack(side="left", padx=8, ipady=2)
+                                      state="readonly", width=28, font=("Consolas", 15))
+        self._model_cb.pack(side="left", padx=(6, 14), ipady=2)
 
-        tk.Label(row2, text="API Key:", font=("Consolas", 16),
-                 fg=FG2, bg=BG2).pack(side="left", padx=(8, 0))
+        tk.Label(row3, text="API Key:", font=("Consolas", 15),
+                 fg=FG2, bg=BG2).pack(side="left")
         self._key_var = tk.StringVar()
         self._key_hint_var = tk.StringVar(value=PROVIDERS[list(PROVIDERS.keys())[0]]["hint"])
-        tk.Entry(row2, textvariable=self._key_var, font=("Consolas", 17),
+        tk.Entry(row3, textvariable=self._key_var, font=("Consolas", 15),
                  bg=BG3, fg=FG, insertbackground=GREEN,
-                 relief="flat", bd=6, show="•", width=36).pack(side="left", padx=8, ipady=3)
-        tk.Label(row2, textvariable=self._key_hint_var,
-                 font=("Consolas", 15), fg=BG4, bg=BG2).pack(side="left")
+                 relief="flat", bd=6, show="•", width=32).pack(side="left", padx=(6, 8), ipady=3)
+        tk.Label(row3, textvariable=self._key_hint_var,
+                 font=("Consolas", 13), fg=BG4, bg=BG2).pack(side="left")
 
     def _on_provider_change(self, _event=None) -> None:
         provider = self._provider_var.get()
@@ -662,7 +668,7 @@ class WhiteClawWebApp:
             })
             tab = cat if cat in self._text_areas else "info"
             self._log_finding(tab, ts, sev, cat, titl, det, fix)
-            self._log_finding("log", ts, sev, cat, titl, "", "")
+            self._log_finding("log", ts, sev, cat, titl, det, "")
             if sev in self._sev_counts:
                 self._sev_counts[sev] += 1
                 self._update_counters()

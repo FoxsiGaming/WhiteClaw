@@ -52,14 +52,14 @@ def _ua() -> str:
     return _UA
 
 def _req(url: str, method: str = "GET", headers: dict = None,
-         max_bytes: int = 512 * 1024, timeout: int = 8,
+         body: bytes = None, max_bytes: int = 512 * 1024, timeout: int = 8,
          follow_redirects: bool = False):
     """Returns (status_code, headers_dict, body_bytes) or None on error."""
     try:
         h = {"User-Agent": _ua(), "Accept": "text/html,application/xhtml+xml,application/json,*/*;q=0.9"}
         if headers:
             h.update(headers)
-        req = urllib.request.Request(url, headers=h, method=method)
+        req = urllib.request.Request(url, data=body, headers=h, method=method)
         opener = urllib.request.build_opener(
             urllib.request.HTTPSHandler(context=_CTX),
             urllib.request.HTTPRedirectHandler() if follow_redirects
@@ -754,6 +754,250 @@ def check_robots_sitemap(cfg: dict) -> None:
                 f"GET {base}/sitemap.xml returned 200.",
                 "Review sitemap entries. If it contains admin or internal URLs, restrict access.")
 
+# ── Check: unauthenticated user data endpoints ───────────────────────────────
+
+_USER_DATA_PATHS = [
+    "/api/users",           "/api/user",            "/api/users/me",
+    "/api/user/me",         "/api/me",              "/api/profile",
+    "/api/account",         "/api/accounts",        "/api/members",
+    "/api/customers",       "/api/admin/users",     "/api/user/list",
+    "/api/users/list",      "/api/users/all",       "/api/v1/users",
+    "/api/v1/me",           "/api/v2/users",        "/api/v2/me",
+    "/rest/v1/users",       "/wp-json/wp/v2/users", "/users",
+    "/profile",             "/account",             "/api/userinfo",
+    "/api/current_user",    "/api/whoami",          "/api/v1/profile",
+]
+
+_USER_DATA_SIGS = [
+    "email", "username", "password", "phone", "address",
+    "first_name", "last_name", "user_id", "userId", "user_name",
+    "role", "admin", "token", "access_token", "created_at",
+    "birth", "ssn", "credit", "card", "account_number",
+]
+
+def check_user_endpoints(cfg: dict) -> None:
+    status("Probing unauthenticated user data endpoints...")
+    base = cfg["base_url"].rstrip("/")
+
+    def probe(path):
+        url = base + path
+        r = _req(url, timeout=cfg["timeout"])
+        if not r:
+            return
+        code, hdrs, body_b = r
+        if code not in (200, 206):
+            return
+        body = body_b.decode("utf-8", errors="ignore")
+        hits = [s for s in _USER_DATA_SIGS if s.lower() in body.lower()]
+        if len(hits) < 2:
+            return
+        sev     = "CRITICAL" if len(hits) >= 4 else "HIGH"
+        preview = body[:200].replace("\n", " ").replace("\r", "")
+        finding(sev, "vulnerabilities",
+                f"Unauthenticated user data exposure: {path}",
+                f"STEP 1 → GET {url}\n"
+                f"STEP 2 → Server returned HTTP {code} — no authentication required\n"
+                f"STEP 3 → Response contains {len(hits)} user-data fields: {', '.join(hits[:8])}\n"
+                f"STEP 4 → Preview: {preview[:160]}\n"
+                f"CONFIRMED: User data accessible without authentication",
+                "Require authentication on all user-data endpoints. "
+                "Apply JWT/session validation before returning any user information.")
+
+    with ThreadPoolExecutor(max_workers=min(cfg["workers"], 10)) as ex:
+        list(ex.map(probe, _USER_DATA_PATHS))
+
+# ── Check: IDOR ────────────────────────────────────────────────────────────────
+
+_IDOR_PATHS = [
+    "/api/users/{id}",     "/api/user/{id}",      "/api/profile/{id}",
+    "/api/account/{id}",   "/api/orders/{id}",    "/api/invoices/{id}",
+    "/api/v1/users/{id}",  "/api/v2/users/{id}",  "/users/{id}",
+    "/profile/{id}",       "/api/messages/{id}",  "/api/files/{id}",
+    "/api/payments/{id}",  "/api/tickets/{id}",   "/api/v1/profile/{id}",
+]
+
+def check_idor(cfg: dict) -> None:
+    status("Testing for Insecure Direct Object Reference (IDOR)...")
+    base = cfg["base_url"].rstrip("/")
+    reported = set()
+    lock = threading.Lock()
+
+    def probe(path_tmpl):
+        hits_by_id = {}
+        for id_val in ("1", "2", "3"):
+            url = base + path_tmpl.replace("{id}", id_val)
+            r = _req(url, timeout=cfg["timeout"])
+            if r and r[0] == 200:
+                body = r[2].decode("utf-8", errors="ignore")
+                hits = [s for s in _USER_DATA_SIGS if s.lower() in body.lower()]
+                if hits:
+                    hits_by_id[id_val] = (url, hits, body[:200])
+        if len(hits_by_id) < 2:
+            return
+        with lock:
+            if path_tmpl in reported:
+                return
+            reported.add(path_tmpl)
+        items   = list(hits_by_id.items())
+        id1, (url1, fields1, preview) = items[0]
+        id2, (url2, fields2, _)       = items[1]
+        finding("HIGH", "vulnerabilities",
+                f"IDOR — sequential IDs expose user records: {path_tmpl}",
+                f"STEP 1 → GET {url1}\n"
+                f"         HTTP 200 · user fields: {', '.join(fields1[:6])}\n"
+                f"STEP 2 → GET {url2}\n"
+                f"         HTTP 200 · user fields: {', '.join(fields2[:6])}\n"
+                f"STEP 3 → Both IDs return data without auth — ownership not checked\n"
+                f"PREVIEW  → {preview.replace(chr(10), ' ')[:160]}\n"
+                f"CONFIRMED: IDOR — increment the ID to access any user's data",
+                "Verify ownership server-side on every request. "
+                "Replace sequential IDs with opaque UUIDs. "
+                "Return 403 when the requester does not own the resource.")
+
+    with ThreadPoolExecutor(max_workers=min(cfg["workers"], 10)) as ex:
+        list(ex.map(probe, _IDOR_PATHS))
+
+# ── Check: account enumeration ────────────────────────────────────────────────
+
+_ENUM_RESET_PATHS = [
+    "/forgot-password", "/password-reset",      "/reset",
+    "/api/forgot-password", "/api/reset-password",
+    "/api/auth/forgot",     "/api/v1/forgot-password",
+]
+_ENUM_LOGIN_PATHS = [
+    "/login", "/signin", "/auth",
+    "/api/login", "/api/auth", "/api/v1/login", "/api/signin",
+]
+_ENUM_NONEXIST_SIGS = [
+    "user not found", "no account", "doesn't exist", "does not exist",
+    "email not found", "account not found", "invalid email", "unknown email",
+    "no user", "not registered",
+]
+_ENUM_EXIST_SIGS = [
+    "password is incorrect", "wrong password", "invalid password",
+    "incorrect password", "password doesn't match", "bad credentials",
+]
+
+def check_account_enumeration(cfg: dict) -> None:
+    status("Testing for account enumeration...")
+    base   = cfg["base_url"].rstrip("/")
+    ct_hdr = "application/x-www-form-urlencoded"
+    email_known   = "admin@example.com"
+    email_unknown = "wc_nosuchuser_xz99@whiteclaw.invalid"
+
+    for path in _ENUM_RESET_PATHS:
+        url = base + path
+        if not _req(url, timeout=cfg["timeout"]) or _req(url, timeout=cfg["timeout"])[0] == 404:
+            continue
+        body_k = urllib.parse.urlencode({"email": email_known}).encode()
+        body_u = urllib.parse.urlencode({"email": email_unknown}).encode()
+        r_k = _req(url, method="POST", headers={"Content-Type": ct_hdr},
+                   body=body_k, timeout=cfg["timeout"])
+        r_u = _req(url, method="POST", headers={"Content-Type": ct_hdr},
+                   body=body_u, timeout=cfg["timeout"])
+        if not r_k or not r_u:
+            continue
+        txt_k = r_k[2].decode("utf-8", errors="ignore").lower()
+        txt_u = r_u[2].decode("utf-8", errors="ignore").lower()
+        leaks = (
+            any(s in txt_u for s in _ENUM_NONEXIST_SIGS) or
+            (any(s in txt_k for s in _ENUM_EXIST_SIGS) and txt_k != txt_u)
+        )
+        if leaks:
+            finding("MEDIUM", "vulnerabilities",
+                    f"Account enumeration via password reset: {path}",
+                    f"STEP 1 → POST {url}  email={email_known}\n"
+                    f"         HTTP {r_k[0]} · {txt_k[:120].strip()}\n"
+                    f"STEP 2 → POST {url}  email={email_unknown}\n"
+                    f"         HTTP {r_u[0]} · {txt_u[:120].strip()}\n"
+                    f"STEP 3 → Different responses reveal whether the account exists\n"
+                    f"CONFIRMED: Account enumeration via {path}",
+                    "Return identical responses regardless of account existence. "
+                    "Use: 'If that email exists, you will receive a reset link.'")
+        return
+
+    for path in _ENUM_LOGIN_PATHS:
+        url = base + path
+        if not _req(url, timeout=cfg["timeout"]) or _req(url, timeout=cfg["timeout"])[0] == 404:
+            continue
+        body_k = urllib.parse.urlencode(
+            {"email": email_known, "username": "admin",
+             "password": "WCProbe_x9!", "login": "1"}).encode()
+        body_u = urllib.parse.urlencode(
+            {"email": email_unknown, "username": "wc_nosuchuser",
+             "password": "WCProbe_x9!", "login": "1"}).encode()
+        r_k = _req(url, method="POST", headers={"Content-Type": ct_hdr},
+                   body=body_k, timeout=cfg["timeout"])
+        r_u = _req(url, method="POST", headers={"Content-Type": ct_hdr},
+                   body=body_u, timeout=cfg["timeout"])
+        if not r_k or not r_u:
+            continue
+        txt_k = r_k[2].decode("utf-8", errors="ignore").lower()
+        txt_u = r_u[2].decode("utf-8", errors="ignore").lower()
+        leaks = (
+            any(s in txt_u for s in _ENUM_NONEXIST_SIGS) or
+            (any(s in txt_k for s in _ENUM_EXIST_SIGS) and txt_k != txt_u)
+        )
+        if leaks:
+            finding("MEDIUM", "vulnerabilities",
+                    f"Account enumeration via login: {path}",
+                    f"STEP 1 → POST {url}  (known-format email + wrong password)\n"
+                    f"         HTTP {r_k[0]} · {txt_k[:120].strip()}\n"
+                    f"STEP 2 → POST {url}  (nonexistent email + same password)\n"
+                    f"         HTTP {r_u[0]} · {txt_u[:120].strip()}\n"
+                    f"STEP 3 → Responses differ — server reveals account existence\n"
+                    f"CONFIRMED: Account enumeration via login form at {path}",
+                    "Return a generic 'Invalid credentials' message for both wrong "
+                    "username and wrong password. Never distinguish between the two.")
+        return
+
+# ── Check: unprotected data export ────────────────────────────────────────────
+
+_EXPORT_PATHS = [
+    "/api/users/export",    "/api/export/users",    "/api/data/export",
+    "/export/users.csv",    "/export/users.json",   "/api/reports/users",
+    "/api/admin/export",    "/export",              "/api/dump",
+    "/api/users/download",  "/api/backup",          "/api/v1/users/export",
+    "/api/v2/users/export", "/api/customers/export","/data/export",
+    "/reports/export",      "/api/members/export",  "/admin/export",
+    "/api/v1/export",       "/api/v2/export",
+]
+
+def check_unauth_export(cfg: dict) -> None:
+    status("Checking for unprotected data export endpoints...")
+    base = cfg["base_url"].rstrip("/")
+
+    def probe(path):
+        url = base + path
+        r = _req(url, timeout=cfg["timeout"])
+        if not r:
+            return
+        code, hdrs, body_b = r
+        if code not in (200, 206):
+            return
+        ct   = hdrs.get("Content-Type", "").lower()
+        body = body_b.decode("utf-8", errors="ignore")
+        is_data = (
+            any(t in ct for t in ("csv", "json", "octet-stream", "xlsx")) or
+            (len(body) > 200 and len([s for s in _USER_DATA_SIGS
+                                       if s.lower() in body.lower()]) >= 2)
+        )
+        if not is_data:
+            return
+        finding("CRITICAL", "vulnerabilities",
+                f"Unprotected data export endpoint: {path}",
+                f"STEP 1 → GET {url} (no auth headers)\n"
+                f"STEP 2 → HTTP {code} · Content-Type: {ct or 'not declared'} · "
+                f"{len(body_b)} bytes\n"
+                f"STEP 3 → Response contains exportable user data\n"
+                f"PREVIEW  → {body[:160].replace(chr(10), ' ')}\n"
+                f"CONFIRMED: Data export reachable without authentication",
+                "Protect all export/download endpoints with authentication + authorization. "
+                "Log every export event. Rate-limit and scope exports to the requesting user's data only.")
+
+    with ThreadPoolExecutor(max_workers=min(cfg["workers"], 10)) as ex:
+        list(ex.map(probe, _EXPORT_PATHS))
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -786,6 +1030,10 @@ def main() -> None:
         check_ssrf,
         check_js_secrets,
         check_robots_sitemap,
+        check_user_endpoints,
+        check_idor,
+        check_account_enumeration,
+        check_unauth_export,
     ]
 
     with ThreadPoolExecutor(max_workers=len(checks)) as ex:
